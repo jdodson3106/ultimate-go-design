@@ -10,6 +10,12 @@ import (
 	"github.com/ardanlabs/service/foundation/logger"
 )
 
+// build represents the version of the code was used to build the binary.
+// this can be linked to a git tag on a release and set through CI/CD
+// using the -ldflag "-X main.build=${<env-name>}" on the go build command.
+// see dockerfile.sales for a working example of this.
+var build = "develop"
+
 func main() {
 	var log *logger.Logger
 	events := logger.Events{
@@ -33,7 +39,7 @@ func main() {
 }
 
 func run(ctx context.Context, log *logger.Logger) error {
-	log.Info(ctx, "startup", "GOMAXPROCS", runtime.GOMAXPROCS(0))
+	log.Info(ctx, "startup", "GOMAXPROCS", runtime.GOMAXPROCS(0), "build", build)
 
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
