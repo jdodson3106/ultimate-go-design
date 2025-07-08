@@ -1,0 +1,68 @@
+# Namespaces can help simplfy a few things with your configuration.
+#
+# If services are in the same namespace then the service name can be
+# configured as the host name to access those services.
+#
+# The way DNS works inside kubernetes is, the namespace and the rest of what
+# k8s needs is auto appended so you have the same configuration on all env
+# just the namespace differs.
+#
+# Another thing a namespace does is to bundle the resources used by an namespace.
+#
+# Another thing is network security if you implement network security with
+# network policies. It is very easy to restrict traffic between namespaces but
+# by default is allowed inside the same namespace.
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sales-system
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sales # pod name
+  namespace: sales-system # pod namespace
+
+spec:
+  selector:
+    matchLabels:
+      app: sales
+
+  template:
+    metadata:
+      labels:
+        app: sales
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: sales
+          image: sales-image # a Kustomize variable name to set the actual container image name
+
+          # This takes the output from k8s limits config (defined in dev-sales-patch-deploy.yaml)
+          # and sets the GOMAXPROCS env var to the cpu limit. Internally kubernetes converts the 
+          # 250m value (or whatever "m" value is provided) to a valid decimal, i.e. 0.25 in this case
+          # representing 25% of the CPU. When the value is returned or read out it transforms the value
+          # with a math.ceil() call to ensure we are always setting the minimum CPU count needed to cover
+          # the limit set. So if we got a 1.5 in the decimal (1500m set in the config) then we would expect
+          # to see GOMAXPROCS set to 2.
+          env:
+            - name: GOMAXPROCS
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.cpu
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: sales-service
+  namespace: sales-system
+
+spec:
+  selector:
+    app: sales
+
